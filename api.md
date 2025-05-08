@@ -175,6 +175,32 @@
 }
 ```
 
+### 5. 删除项目
+
+- **接口**: `DELETE /projects`
+- **描述**: 删除一个或多个项目
+- **认证**: 需要管理员密码
+- **请求头**: `admin-password: wufeng1998`
+- **请求体**:
+```json
+[
+  "api-gateway",
+  "user-service"
+]
+```
+- **响应**:
+```json
+{
+  "code": 200,
+  "data": {
+    "success": true,
+    "message": "成功删除 2 个项目"
+  },
+  "message": "Success",
+  "success": true
+}
+```
+
 ## 错误码说明
 
 - 400: 请求参数错误

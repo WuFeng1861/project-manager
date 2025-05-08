@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import {Injectable, NotFoundException, Inject, InternalServerErrorException} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
@@ -140,6 +140,38 @@ export class ProjectsService {
         success: false,
         message: `Failed to restart project: ${error.message}`,
       };
+    }
+  }
+  
+  async deleteProjects(serviceNames: string[]): Promise<{ success: boolean; message: string }> {
+    try {
+      const projects = await this.projectRepository.find({
+        where: serviceNames.map(name => ({ serviceName: name }))
+      });
+      
+      if (projects.length === 0) {
+        throw new NotFoundException('未找到指定的项目');
+      }
+      
+      await this.projectRepository.remove(projects);
+      
+      // 清除缓存
+      for (const project of projects) {
+        await this.cacheManager.del(`project_${project.serviceName}`);
+        await this.cacheManager.del(`project_${project.serviceName}_admin`);
+      }
+      await this.cacheManager.del('all_projects');
+      await this.cacheManager.del('all_projects_admin');
+      
+      return {
+        success: true,
+        message: `成功删除 ${projects.length} 个项目`,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('删除项目时发生错误');
     }
   }
 }

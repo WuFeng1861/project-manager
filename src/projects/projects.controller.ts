@@ -1,15 +1,15 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
   Query,
   UseGuards,
   Request,
   UnauthorizedException,
   NotFoundException,
-  InternalServerErrorException
+  InternalServerErrorException, Delete
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -71,5 +71,13 @@ export class ProjectsController {
     }
     
     return project;
+  }
+  
+  @Delete()
+  @ApiOperation({ summary: '删除一个或多个项目' })
+  @ApiResponse({ status: 200, description: '项目删除成功' })
+  @UseGuards(AdminAuthGuard)
+  async deleteProjects(@Body() serviceNames: string[]) {
+    return this.projectsService.deleteProjects(serviceNames);
   }
 }
