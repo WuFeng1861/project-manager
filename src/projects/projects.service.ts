@@ -45,6 +45,7 @@ export class ProjectsService {
     );
     
     await this.cacheManager.del('all_projects');
+    await this.cacheManager.del('all_projects_admin');
     
     return savedProject;
   }
@@ -189,7 +190,9 @@ export class ProjectsService {
       const runtime = project.serviceRuntime * 1000;
       const lastRestartTime = project.lastRestartTime ? new Date(project.lastRestartTime) : null;
       const timeInterval = now.getTime() - (lastRestartTime?.getTime() || 0);
-      return timeInterval > runtime + 5 * 60 * 1000;
+      let isDead = timeInterval - runtime > 5 * 60 * 1000;
+      console.log(now.toLocaleString(), timeInterval, runtime, lastRestartTime?.toLocaleString(), isDead)
+      return isDead;
     });
     // 请求api发送邮件
     for (const project of aliveProjects) {
