@@ -16,6 +16,7 @@ let AdminAuthGuard = class AdminAuthGuard {
     canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const adminPassword = request.headers['admin-password'] || request.query.adminPassword;
+        console.log(request.headers['admin-password'], request.query.adminPassword, 'password need:' + this.ADMIN_PASSWORD);
         if (!adminPassword || adminPassword !== this.ADMIN_PASSWORD) {
             throw new common_1.UnauthorizedException('Invalid admin password');
         }

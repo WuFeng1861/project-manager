@@ -15,4 +15,9 @@ export declare class ProjectsService {
         success: boolean;
         message: string;
     }>;
+    deleteProjects(serviceNames: string[]): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    checkProjectIsAlive(): Promise<void>;
 }

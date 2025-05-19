@@ -49,6 +49,9 @@ let ProjectsController = class ProjectsController {
         }
         return project;
     }
+    async deleteProjects(serviceNames) {
+        return this.projectsService.deleteProjects(serviceNames);
+    }
 };
 exports.ProjectsController = ProjectsController;
 __decorate([
@@ -92,6 +95,16 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Delete)(),
+    (0, swagger_1.ApiOperation)({ summary: '删除一个或多个项目' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '项目删除成功' }),
+    (0, common_1.UseGuards)(admin_auth_guard_1.AdminAuthGuard),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "deleteProjects", null);
 exports.ProjectsController = ProjectsController = __decorate([
     (0, swagger_1.ApiTags)('projects'),
     (0, common_1.Controller)('projects'),
