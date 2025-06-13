@@ -183,41 +183,45 @@ export class ProjectsService {
   }
   
   async checkProjectIsAlive(): Promise<void> {
-    let aliveProjects: Project[] = await this.findAll(true);
-    // 判断项目的运行时间+项目的上次重启时间是否小于现在时间-5分钟 找出停止运行的项目
-    aliveProjects = aliveProjects.filter(project => {
-      const now = new Date();
-      const runtime = project.serviceRuntime * 1000;
-      const lastRestartTime = project.lastRestartTime ? new Date(project.lastRestartTime) : null;
-      const timeInterval = now.getTime() - (lastRestartTime?.getTime() || 0);
-      let isDead = timeInterval - runtime > 5 * 60 * 1000;
-      console.log(now.toLocaleString(), timeInterval, runtime, lastRestartTime?.toLocaleString(), isDead)
-      return isDead;
-    });
-    // 请求api发送邮件
-    for (const project of aliveProjects) {
-      if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
-        continue;
-      }
-      // 根据上面的fetch请求使用axios api发送邮件
-      await axios.post('https://wufeng98.cn/emailServerApi/api/email/send', {
-        app: 'Mercury',
-        templateId: 2,
-        templateData: {
-          projectName: project.serviceName,
-          serverIp: `${project.serverIp}:${project.servicePort}`,
-          stopTime: new Date().toLocaleString(),
-        },
-        recipient: '1379459026@qq.com',
-        recipientName: 'WuFeng',
+    try {
+      let aliveProjects: Project[] = await this.findAll(true);
+      // 判断项目的运行时间+项目的上次重启时间是否小于现在时间-5分钟 找出停止运行的项目
+      aliveProjects = aliveProjects.filter(project => {
+        const now = new Date();
+        const runtime = project.serviceRuntime * 1000;
+        const lastRestartTime = project.lastRestartTime ? new Date(project.lastRestartTime) : null;
+        const timeInterval = now.getTime() - (lastRestartTime?.getTime() || 0);
+        let isDead = timeInterval - runtime > 5 * 60 * 1000;
+        console.log(now.toLocaleString(), timeInterval, runtime, lastRestartTime?.toLocaleString(), isDead)
+        return isDead;
       });
-      console.log(`${project.serviceName}重启邮件以发送`, new Date().toLocaleString());
-      // 添加缓存 每小时只给同一个项目发送一次邮件
-      await this.cacheManager.set(
-        `project_${project.serviceName}_alive`,
-        true,
-        60*60*1000,
-      );
+      // 请求api发送邮件
+      for (const project of aliveProjects) {
+        if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
+          continue;
+        }
+        console.log(`${project.serviceName}重启邮件以发送`, new Date().toLocaleString());
+        // 添加缓存 每小时只给同一个项目发送一次邮件
+        await this.cacheManager.set(
+          `project_${project.serviceName}_alive`,
+          true,
+          60 * 60 * 1000,
+        );
+        // 根据上面的fetch请求使用axios api发送邮件
+        await axios.post('https://wufeng98.cn/emailServerApi/api/email/send', {
+          app: 'Mercury',
+          templateId: 2,
+          templateData: {
+            projectName: project.serviceName,
+            serverIp: `${project.serverIp}:${project.servicePort}`,
+            stopTime: new Date().toLocaleString(),
+          },
+          recipient: '1379459026@qq.com',
+          recipientName: 'WuFeng',
+        });
+      }
+    } catch (error) {
+      console.log(error.message, 'checkProjectIsAlive error');
     }
     
   }
