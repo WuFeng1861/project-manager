@@ -209,7 +209,7 @@ export class ProjectsService {
         );
         // 根据上面的fetch请求使用axios api发送邮件
         await axios.post('https://wufeng98.cn/emailServerApi/api/email/send', {
-          app: 'Mercury',
+          app: 'WuFeng163',
           templateId: 2,
           templateData: {
             projectName: project.serviceName,
