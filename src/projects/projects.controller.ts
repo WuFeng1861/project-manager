@@ -9,7 +9,7 @@ import {
   Request,
   UnauthorizedException,
   NotFoundException,
-  InternalServerErrorException, Delete
+  InternalServerErrorException, BadRequestException, Delete
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -52,6 +52,22 @@ export class ProjectsController {
       }
       throw new InternalServerErrorException('Failed to restart the service');
     }
+  }
+
+  @Get('pause')
+  @ApiOperation({ summary: '暂停某个项目指定时长内的邮件通知' })
+  @ApiResponse({ status: 200, description: '暂停成功' })
+  @ApiQuery({ name: 'projectName', required: true, description: '项目服务名' })
+  @ApiQuery({ name: 'time', required: true, description: '暂停时长（小时）' })
+  async pauseProject(
+    @Query('projectName') projectName: string,
+    @Query('time') time: string,
+  ) {
+    const hours = Number(time);
+    if (!projectName || !hours || hours <= 0) {
+      throw new BadRequestException('projectName 和 time(正数) 参数必填');
+    }
+    return this.projectsService.pauseProject(projectName, hours);
   }
 
   @Get(':serviceName')

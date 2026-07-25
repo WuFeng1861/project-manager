@@ -197,6 +197,10 @@ export class ProjectsService {
       });
       // 请求api发送邮件
       for (const project of aliveProjects) {
+        // 如果项目被手动暂停，跳过邮件发送
+        if (await this.cacheManager.get(`project_${project.serviceName}_pause`)) {
+          continue;
+        }
         if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
           continue;
         }
@@ -207,6 +211,8 @@ export class ProjectsService {
           true,
           60 * 60 * 1000,
         );
+        // 构造暂停链接，默认暂停 24 小时，用户可自行修改 time 参数
+        const stopUrl = `https://wufeng98.cn/projectManagerApi/projects/pause?time=24&projectName=${encodeURIComponent(project.serviceName)}`;
         // 根据上面的fetch请求使用axios api发送邮件
         await axios.post('https://wufeng98.cn/emailServerApi/api/email/send', {
           app: 'WuFeng163',
@@ -215,6 +221,7 @@ export class ProjectsService {
             projectName: project.serviceName,
             serverIp: `${project.serverIp}:${project.servicePort}`,
             stopTime: new Date().toLocaleString(),
+            stopUrl,
           },
           recipient: '1379459026@qq.com',
           recipientName: 'WuFeng',
@@ -223,6 +230,25 @@ export class ProjectsService {
     } catch (error) {
       console.log(error.message, 'checkProjectIsAlive error');
     }
-    
+
+  }
+
+  async pauseProject(projectName: string, hours: number): Promise<{ success: boolean; message: string }> {
+    const project = await this.projectRepository.findOne({
+      where: { serviceName: projectName },
+    });
+    if (!project) {
+      throw new NotFoundException(`Project with service name ${projectName} not found`);
+    }
+    // 设置暂停缓存，TTL 为指定小时数
+    await this.cacheManager.set(
+      `project_${projectName}_pause`,
+      true,
+      hours * 60 * 60 * 1000,
+    );
+    return {
+      success: true,
+      message: `已暂停 ${projectName} 的邮件通知 ${hours} 小时`,
+    };
   }
 }
