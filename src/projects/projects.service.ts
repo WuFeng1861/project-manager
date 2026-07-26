@@ -212,7 +212,7 @@ export class ProjectsService {
           60 * 60 * 1000,
         );
         // 构造暂停链接，默认暂停 24 小时，用户可自行修改 time 参数
-        const stopUrl = `https://wufeng98.cn/projectManagerApi/projects/pause?time=24&projectName=${encodeURIComponent(project.serviceName)}`;
+        const stopUrl = `https://wufeng98.cn/projectManagerApi/projects/pause?time=24&projectName=${project.serviceName}`;
         // 根据上面的fetch请求使用axios api发送邮件
         await axios.post('https://wufeng98.cn/emailServerApi/api/email/send', {
           app: 'WuFeng163',
