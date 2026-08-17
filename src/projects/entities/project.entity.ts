@@ -29,6 +29,9 @@ export class Project {
   @Column()
   projectPassword: string;
 
+  @Column({ nullable: true })
+  pauseUntil: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

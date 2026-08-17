@@ -45,6 +45,7 @@ let ProjectsService = class ProjectsService {
         const savedProject = await this.projectRepository.save(project);
         await this.cacheManager.set(`project_${savedProject.serviceName}`, savedProject, 60 * 60 * 1000);
         await this.cacheManager.del('all_projects');
+        await this.cacheManager.del('all_projects_admin');
         return savedProject;
     }
     async findAll(isAdmin) {
@@ -143,32 +144,63 @@ let ProjectsService = class ProjectsService {
         }
     }
     async checkProjectIsAlive() {
-        let aliveProjects = await this.findAll(true);
-        aliveProjects = aliveProjects.filter(project => {
-            const now = new Date();
-            const runtime = project.serviceRuntime * 1000;
-            const lastRestartTime = project.lastRestartTime ? new Date(project.lastRestartTime) : null;
-            const timeInterval = now.getTime() - (lastRestartTime?.getTime() || 0);
-            return timeInterval > runtime + 5 * 60 * 1000;
-        });
-        for (const project of aliveProjects) {
-            if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
-                continue;
-            }
-            await axios_2.default.post('https://wufeng98.cn/emailServerApi/api/email/send', {
-                app: 'Mercury',
-                templateId: 2,
-                templateData: {
-                    projectName: project.serviceName,
-                    serverIp: `${project.serverIp}:${project.servicePort}`,
-                    stopTime: new Date().toLocaleString(),
-                },
-                recipient: '1379459026@qq.com',
-                recipientName: 'WuFeng',
+        try {
+            let aliveProjects = await this.findAll(true);
+            aliveProjects = aliveProjects.filter(project => {
+                const now = new Date();
+                const runtime = project.serviceRuntime * 1000;
+                const lastRestartTime = project.lastRestartTime ? new Date(project.lastRestartTime) : null;
+                const timeInterval = now.getTime() - (lastRestartTime?.getTime() || 0);
+                let isDead = timeInterval - runtime > 5 * 60 * 1000;
+                console.log(now.toLocaleString(), timeInterval, runtime, lastRestartTime?.toLocaleString(), isDead);
+                return isDead;
             });
-            console.log(`${project.serviceName}重启邮件以发送`, new Date().toLocaleString());
-            await this.cacheManager.set(`project_${project.serviceName}_alive`, true, 60 * 60 * 1000);
+            for (const project of aliveProjects) {
+                const now = new Date();
+                if (project.pauseUntil && new Date(project.pauseUntil).getTime() > now.getTime()) {
+                    continue;
+                }
+                if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
+                    continue;
+                }
+                console.log(`${project.serviceName}重启邮件以发送`, new Date().toLocaleString());
+                await this.cacheManager.set(`project_${project.serviceName}_alive`, true, 60 * 60 * 1000);
+                const stopUrl = `https://wufeng98.cn/projectManagerApi/projects/pause?time=24&projectName=${project.serviceName}`;
+                await axios_2.default.post('https://wufeng98.cn/emailServerApi/api/email/send', {
+                    app: 'WuFeng163',
+                    templateId: 2,
+                    templateData: {
+                        projectName: project.serviceName,
+                        serverIp: `${project.serverIp}:${project.servicePort}`,
+                        stopTime: new Date().toLocaleString(),
+                        stopUrl,
+                    },
+                    recipient: '1379459026@qq.com',
+                    recipientName: 'WuFeng',
+                });
+            }
         }
+        catch (error) {
+            console.log(error.message, 'checkProjectIsAlive error');
+        }
+    }
+    async pauseProject(projectName, hours) {
+        const project = await this.projectRepository.findOne({
+            where: { serviceName: projectName },
+        });
+        if (!project) {
+            throw new common_1.NotFoundException(`Project with service name ${projectName} not found`);
+        }
+        project.pauseUntil = new Date(Date.now() + hours * 60 * 60 * 1000);
+        await this.projectRepository.save(project);
+        await this.cacheManager.del(`project_${projectName}`);
+        await this.cacheManager.del(`project_${projectName}_admin`);
+        await this.cacheManager.del('all_projects');
+        await this.cacheManager.del('all_projects_admin');
+        return {
+            success: true,
+            message: `已暂停 ${projectName} 的邮件通知 ${hours} 小时`,
+        };
     }
 };
 exports.ProjectsService = ProjectsService;

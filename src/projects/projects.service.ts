@@ -197,8 +197,9 @@ export class ProjectsService {
       });
       // 请求api发送邮件
       for (const project of aliveProjects) {
-        // 如果项目被手动暂停，跳过邮件发送
-        if (await this.cacheManager.get(`project_${project.serviceName}_pause`)) {
+        // 如果项目被手动暂停（暂停时间未过期），跳过邮件发送
+        const now = new Date();
+        if (project.pauseUntil && new Date(project.pauseUntil).getTime() > now.getTime()) {
           continue;
         }
         if (await this.cacheManager.get(`project_${project.serviceName}_alive`)) {
@@ -240,12 +241,16 @@ export class ProjectsService {
     if (!project) {
       throw new NotFoundException(`Project with service name ${projectName} not found`);
     }
-    // 设置暂停缓存，TTL 为指定小时数
-    await this.cacheManager.set(
-      `project_${projectName}_pause`,
-      true,
-      hours * 60 * 60 * 1000,
-    );
+    // 将暂停截止时间持久化到数据库，避免程序重启后丢失暂停状态导致多发邮件
+    project.pauseUntil = new Date(Date.now() + hours * 60 * 60 * 1000);
+    await this.projectRepository.save(project);
+
+    // 清除缓存，使下一次检测读取到最新的 pauseUntil
+    await this.cacheManager.del(`project_${projectName}`);
+    await this.cacheManager.del(`project_${projectName}_admin`);
+    await this.cacheManager.del('all_projects');
+    await this.cacheManager.del('all_projects_admin');
+
     return {
       success: true,
       message: `已暂停 ${projectName} 的邮件通知 ${hours} 小时`,

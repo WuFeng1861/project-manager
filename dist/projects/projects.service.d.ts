@@ -20,4 +20,8 @@ export declare class ProjectsService {
         message: string;
     }>;
     checkProjectIsAlive(): Promise<void>;
+    pauseProject(projectName: string, hours: number): Promise<{
+        success: boolean;
+        message: string;
+    }>;
 }

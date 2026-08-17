@@ -41,6 +41,13 @@ let ProjectsController = class ProjectsController {
             throw new common_1.InternalServerErrorException('Failed to restart the service');
         }
     }
+    async pauseProject(projectName, time) {
+        const hours = Number(time);
+        if (!projectName || !hours || hours <= 0) {
+            throw new common_1.BadRequestException('projectName 和 time(正数) 参数必填');
+        }
+        return this.projectsService.pauseProject(projectName, hours);
+    }
     async findOne(serviceName, adminPassword) {
         const isAdmin = adminPassword === 'wufeng1998';
         const project = await this.projectsService.findOne(serviceName, isAdmin);
@@ -83,6 +90,18 @@ __decorate([
     __metadata("design:paramtypes", [restart_project_dto_1.RestartProjectDto]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "restartProject", null);
+__decorate([
+    (0, common_1.Get)('pause'),
+    (0, swagger_1.ApiOperation)({ summary: '暂停某个项目指定时长内的邮件通知' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '暂停成功' }),
+    (0, swagger_1.ApiQuery)({ name: 'projectName', required: true, description: '项目服务名' }),
+    (0, swagger_1.ApiQuery)({ name: 'time', required: true, description: '暂停时长（小时）' }),
+    __param(0, (0, common_1.Query)('projectName')),
+    __param(1, (0, common_1.Query)('time')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "pauseProject", null);
 __decorate([
     (0, common_1.Get)(':serviceName'),
     (0, swagger_1.ApiOperation)({ summary: 'Get a specific project information' }),

@@ -8,6 +8,7 @@ export declare class Project {
     serviceDescription: string;
     lastRestartTime: Date;
     projectPassword: string;
+    pauseUntil: Date;
     createdAt: Date;
     updatedAt: Date;
 }

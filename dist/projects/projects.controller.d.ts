@@ -10,6 +10,10 @@ export declare class ProjectsController {
         success: boolean;
         message: string;
     }>;
+    pauseProject(projectName: string, time: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     findOne(serviceName: string, adminPassword: string): Promise<import("./entities/project.entity").Project>;
     deleteProjects(serviceNames: string[]): Promise<{
         success: boolean;
