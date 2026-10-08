@@ -1,6 +1,6 @@
 # Project Manager
 
-A NestJS application for managing project information with MySQL.
+A NestJS application for managing project information with SQLite.
 
 ## Features
 
@@ -12,7 +12,7 @@ A NestJS application for managing project information with MySQL.
 ## Prerequisites
 
 - Node.js (v14 or higher)
-- MySQL
+- SQLite (embedded, no separate install required)
 
 ## Installation
 
