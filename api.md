@@ -48,17 +48,17 @@
 ## 认证
 
 部分接口需要管理员密码验证：
-- 管理员密码: `wufeng1998`
+- 管理员密码来自环境变量 `SERVER_PASSWORD`
 - 传递方式: 
-  - Query参数: `?adminPassword=wufeng1998`
-  - 或 Header: `admin-password: wufeng1998`
+  - Query参数: `?adminPassword=<管理员密码>`
+  - 或 Header: `admin-password: <管理员密码>`
 
 ## 接口列表
 
 ### 1. 上传/更新项目信息
 
 - **接口**: `POST /projects`
-- **描述**: 上传或更新项目信息，如果项目已存在（根据serviceName判断）则更新，不存在则创建
+- **描述**: 上传或更新项目信息，如果项目已存在（根据serviceName判断）则更新，不存在则创建；同时把本次请求涉及的 IP 追加到 `sourceIps`
 - **请求体**:
 ```json
 {
@@ -80,6 +80,8 @@
     "id": 1,
     "serviceName": "api-gateway",
     "serverIp": "192.168.1.1",
+    "sourceIp": "203.0.113.9",
+    "sourceIps": ["203.0.113.9", "10.0.0.5", "192.168.1.7"],
     "servicePort": 8080,
     "serviceNotes": "主要API网关",
     "serviceRuntime": 3600,
@@ -108,6 +110,8 @@
       "id": 1,
       "serviceName": "api-gateway",
       "serverIp": "192.*.*.1",
+      "sourceIp": "203.0.113.9",
+      "sourceIps": ["203.0.113.9", "10.0.0.5", "192.168.1.7"],
       "servicePort": 8080,
       "serviceNotes": "主要API网关",
       "serviceRuntime": 3600,
@@ -137,6 +141,8 @@
     "id": 1,
     "serviceName": "api-gateway",
     "serverIp": "192.*.*.1",
+    "sourceIp": "203.0.113.9",
+    "sourceIps": ["203.0.113.9", "10.0.0.5", "192.168.1.7"],
     "servicePort": 8080,
     "serviceNotes": "主要API网关",
     "serviceRuntime": 3600,
@@ -155,7 +161,7 @@
 - **接口**: `POST /projects/restart`
 - **描述**: 重启指定的项目服务
 - **认证**: 需要管理员密码
-- **请求头**: `admin-password: wufeng1998`
+- **请求头**: `admin-password: <管理员密码>`
 - **请求体**:
 ```json
 {
@@ -180,7 +186,7 @@
 - **接口**: `DELETE /projects`
 - **描述**: 删除一个或多个项目
 - **认证**: 需要管理员密码
-- **请求头**: `admin-password: wufeng1998`
+- **请求头**: `admin-password: <管理员密码>`
 - **请求体**:
 ```json
 [
@@ -201,16 +207,51 @@
 }
 ```
 
+### 6. 清空项目 IP 记录
+
+- **接口**: `DELETE /projects/{serviceName}/ip-history`
+- **描述**: 清空指定项目累计记录的 `sourceIps`，不影响项目其他信息
+- **认证**: 需要管理员密码
+- **请求头**: `admin-password: <管理员密码>`
+- **响应**:
+```json
+{
+  "code": 200,
+  "data": {
+    "success": true,
+    "message": "已清空 api-gateway 的 IP 记录"
+  },
+  "message": "Success",
+  "success": true
+}
+```
+
+### 7. 请求频率限制与黑名单
+
+- 系统按 IP 统计请求频率，默认每个 IP 每分钟正常上限为 30 次
+- 超过正常上限的 10 倍（默认 300 次/分钟）时，该 IP 会被直接加入黑名单
+- 黑名单默认持续 24 小时，期间请求返回 403；触发限制的那次请求返回 429
+- 携带正确管理员密码的请求不参与限流，避免管理员被误封
+- 可通过环境变量调整：`RATE_LIMIT_NORMAL_MAX`、`RATE_LIMIT_WINDOW_MS`、`RATE_LIMIT_BLACKLIST_MULTIPLIER`、`RATE_LIMIT_BLOCK_MS`
+
+黑名单管理接口（需要管理员密码）：
+
+- **GET** `/projects/blocked-ips`：获取当前生效的黑名单
+- **DELETE** `/projects/blocked-ips/{ip}`：解除指定 IP 的黑名单
+
 ## 错误码说明
 
 - 400: 请求参数错误
 - 401: 未授权（管理员密码错误）
+- 403: IP 已被列入黑名单
 - 404: 资源不存在
+- 429: 请求过于频繁，已触发黑名单
 - 500: 服务器内部错误
 
 ## 注意事项
 
 1. 所有时间字段均使用 ISO 8601 格式
 2. 非管理员访问时，IP 地址会被部分隐藏
-3. 项目密码用于项目重启验证，请妥善保管
-4. 服务运行时间（serviceRuntime）单位为秒
+3. `sourceIps` 累计记录调用 `POST /projects` 时出现的所有 IP（原始客户端 → 各级代理 → 直连地址），自动去重、只增不减；管理员可通过 `DELETE /projects/{serviceName}/ip-history` 手动清空。`sourceIp` 为最近一次请求的原始客户端 IP
+4. 项目密码用于项目重启验证，请妥善保管
+5. 服务运行时间（serviceRuntime）单位为秒

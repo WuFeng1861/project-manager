@@ -55,6 +55,14 @@ __decorate([
     __metadata("design:type", Date)
 ], Project.prototype, "pauseUntil", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "sourceIp", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'simple-json', nullable: true }),
+    __metadata("design:type", Array)
+], Project.prototype, "sourceIps", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Project.prototype, "createdAt", void 0);

@@ -6,28 +6,41 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
   UnauthorizedException,
   NotFoundException,
   InternalServerErrorException, BadRequestException, Delete
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { RestartProjectDto } from './dto/restart-project.dto';
 import { AdminAuthGuard } from '../common/guards/admin-auth.guard';
+import { ClientIpUtil } from '../common/utils/client-ip.util';
+import { IpBlockService } from '../rate-limit/ip-block.service';
 
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly ipBlockService: IpBlockService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Register or update project information' })
   @ApiResponse({ status: 201, description: 'Project information saved successfully' })
-  async createOrUpdate(@Body() createProjectDto: CreateProjectDto) {
-    return this.projectsService.createOrUpdate(createProjectDto);
+  async createOrUpdate(
+    @Body() createProjectDto: CreateProjectDto,
+    @Req() request: ExpressRequest,
+  ) {
+    return this.projectsService.createOrUpdate(
+      createProjectDto,
+      ClientIpUtil.getClientIp(request),
+      ClientIpUtil.getRequestIps(request),
+    );
   }
 
   @Get()
@@ -35,8 +48,24 @@ export class ProjectsController {
   @ApiResponse({ status: 200, description: 'Returns all projects information' })
   @ApiQuery({ name: 'adminPassword', required: false, description: 'Admin password for full access' })
   async findAll(@Query('adminPassword') adminPassword: string) {
-    const isAdmin = adminPassword === 'wufeng1998';
+    const isAdmin = adminPassword === process.env.SERVER_PASSWORD;
     return this.projectsService.findAll(isAdmin);
+  }
+
+  @Get('blocked-ips')
+  @ApiOperation({ summary: '获取黑名单中的 IP（仅管理员）' })
+  @ApiResponse({ status: 200, description: '返回当前生效的黑名单' })
+  @UseGuards(AdminAuthGuard)
+  async listBlockedIps() {
+    return this.ipBlockService.list();
+  }
+
+  @Delete('blocked-ips/:ip')
+  @ApiOperation({ summary: '解除指定 IP 的黑名单（仅管理员）' })
+  @ApiResponse({ status: 200, description: '黑名单已解除' })
+  @UseGuards(AdminAuthGuard)
+  async unblockIp(@Param('ip') ip: string) {
+    return this.ipBlockService.unblock(ip);
   }
 
   @Post('restart')
@@ -79,7 +108,7 @@ export class ProjectsController {
     @Param('serviceName') serviceName: string,
     @Query('adminPassword') adminPassword: string,
   ) {
-    const isAdmin = adminPassword === 'wufeng1998';
+    const isAdmin = adminPassword === process.env.SERVER_PASSWORD;
     const project = await this.projectsService.findOne(serviceName, isAdmin);
     
     if (!project) {
@@ -89,6 +118,14 @@ export class ProjectsController {
     return project;
   }
   
+  @Delete(':serviceName/ip-history')
+  @ApiOperation({ summary: '清空项目的 IP 记录（仅管理员）' })
+  @ApiResponse({ status: 200, description: 'IP 记录已清空' })
+  @UseGuards(AdminAuthGuard)
+  async clearSourceIps(@Param('serviceName') serviceName: string) {
+    return this.projectsService.clearSourceIps(serviceName);
+  }
+
   @Delete()
   @ApiOperation({ summary: '删除一个或多个项目' })
   @ApiResponse({ status: 200, description: '项目删除成功' })

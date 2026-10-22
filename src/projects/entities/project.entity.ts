@@ -32,6 +32,12 @@ export class Project {
   @Column({ nullable: true })
   pauseUntil: Date;
 
+  @Column({ nullable: true })
+  sourceIp: string;
+
+  @Column({ type: 'simple-json', nullable: true })
+  sourceIps: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 

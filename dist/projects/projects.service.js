@@ -32,7 +32,7 @@ let ProjectsService = class ProjectsService {
             this.checkProjectIsAlive();
         }, 5 * 60 * 1000);
     }
-    async createOrUpdate(createProjectDto) {
+    async createOrUpdate(createProjectDto, sourceIp, requestIps) {
         let project = await this.projectRepository.findOne({
             where: { serviceName: createProjectDto.serviceName },
         });
@@ -41,6 +41,12 @@ let ProjectsService = class ProjectsService {
         }
         else {
             project = this.projectRepository.create(createProjectDto);
+        }
+        if (sourceIp) {
+            project.sourceIp = sourceIp;
+        }
+        if (requestIps?.length) {
+            project.sourceIps = Array.from(new Set([...(project.sourceIps || []), ...requestIps]));
         }
         const savedProject = await this.projectRepository.save(project);
         await this.cacheManager.set(`project_${savedProject.serviceName}`, savedProject, 60 * 60 * 1000);
@@ -183,6 +189,24 @@ let ProjectsService = class ProjectsService {
         catch (error) {
             console.log(error.message, 'checkProjectIsAlive error');
         }
+    }
+    async clearSourceIps(serviceName) {
+        const project = await this.projectRepository.findOne({
+            where: { serviceName },
+        });
+        if (!project) {
+            throw new common_1.NotFoundException(`Project with service name ${serviceName} not found`);
+        }
+        project.sourceIps = [];
+        await this.projectRepository.save(project);
+        await this.cacheManager.del(`project_${serviceName}`);
+        await this.cacheManager.del(`project_${serviceName}_admin`);
+        await this.cacheManager.del('all_projects');
+        await this.cacheManager.del('all_projects_admin');
+        return {
+            success: true,
+            message: `已清空 ${serviceName} 的 IP 记录`,
+        };
     }
     async pauseProject(projectName, hours) {
         const project = await this.projectRepository.findOne({

@@ -8,7 +8,7 @@ export declare class ProjectsService {
     private cacheManager;
     private httpService;
     constructor(projectRepository: Repository<Project>, cacheManager: Cache, httpService: HttpService);
-    createOrUpdate(createProjectDto: CreateProjectDto): Promise<Project>;
+    createOrUpdate(createProjectDto: CreateProjectDto, sourceIp?: string, requestIps?: string[]): Promise<Project>;
     findAll(isAdmin: boolean): Promise<Project[]>;
     findOne(serviceName: string, isAdmin: boolean): Promise<Project>;
     restartProject(serviceName: string): Promise<{
@@ -20,6 +20,10 @@ export declare class ProjectsService {
         message: string;
     }>;
     checkProjectIsAlive(): Promise<void>;
+    clearSourceIps(serviceName: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     pauseProject(projectName: string, hours: number): Promise<{
         success: boolean;
         message: string;

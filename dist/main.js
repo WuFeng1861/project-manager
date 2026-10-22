@@ -1,13 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
+const config_1 = require("@nestjs/config");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
+function resolveTrustProxy(value) {
+    if (!value) {
+        return ['loopback', 'linklocal', 'uniquelocal'];
+    }
+    if (value === 'true')
+        return true;
+    if (value === 'false')
+        return false;
+    if (/^\d+$/.test(value))
+        return Number(value);
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const configService = app.get(config_1.ConfigService);
+    app.set('trust proxy', resolveTrustProxy(configService.get('TRUST_PROXY')));
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         transform: true,

@@ -11,7 +11,7 @@ A NestJS application for managing project information with SQLite.
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js 22 or higher (better-sqlite3 v12 provides prebuilt binaries for Node 26)
 - SQLite (embedded, no separate install required)
 
 ## Installation
@@ -60,15 +60,15 @@ npm run start:prod
 
 ### Get All Projects
 - **GET** `/projects`
-- Optional query param: `adminPassword=wufeng1998`
+- Optional query param: `adminPassword=<ADMIN_PASSWORD>`
 
 ### Get Project by Service Name
 - **GET** `/projects/{serviceName}`
-- Optional query param: `adminPassword=wufeng1998`
+- Optional query param: `adminPassword=<ADMIN_PASSWORD>`
 
 ### Restart Project
 - **POST** `/projects/restart`
-- Header: `admin-password: wufeng1998`
+- Header: `admin-password: <ADMIN_PASSWORD>`
 - Body:
   ```json
   {

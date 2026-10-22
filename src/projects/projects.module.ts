@@ -5,6 +5,7 @@ import { HttpModule } from '@nestjs/axios';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
+import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { Project } from './entities/project.entity';
       max: 1000,
     }),
     HttpModule,
+    RateLimitModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

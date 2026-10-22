@@ -9,6 +9,8 @@ export declare class Project {
     lastRestartTime: Date;
     projectPassword: string;
     pauseUntil: Date;
+    sourceIp: string;
+    sourceIps: string[];
     createdAt: Date;
     updatedAt: Date;
 }

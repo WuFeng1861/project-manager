@@ -12,6 +12,7 @@ const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const cache_manager_1 = require("@nestjs/cache-manager");
 const projects_module_1 = require("./projects/projects.module");
+const rate_limit_module_1 = require("./rate-limit/rate-limit.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,14 +31,14 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: (configService) => ({
-                    type: 'sqljs',
-                    location: configService.get('DB_DATABASE', 'project_manager.sqlite'),
-                    autoSave: true,
+                    type: 'better-sqlite3',
+                    database: configService.get('DB_DATABASE', 'project_manager.sqlite'),
                     entities: [__dirname + '/**/*.entity{.ts,.js}'],
                     synchronize: configService.get('DB_SYNCHRONIZE', true),
                 }),
             }),
             projects_module_1.ProjectsModule,
+            rate_limit_module_1.RateLimitModule,
         ],
     })
 ], AppModule);
