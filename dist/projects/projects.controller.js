@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectsController = void 0;
 const common_1 = require("@nestjs/common");
+const node_net_1 = require("node:net");
 const swagger_1 = require("@nestjs/swagger");
 const projects_service_1 = require("./projects.service");
 const create_project_dto_1 = require("./dto/create-project.dto");
@@ -35,6 +36,22 @@ let ProjectsController = class ProjectsController {
     }
     async listBlockedIps() {
         return this.ipBlockService.list();
+    }
+    async blockIp(body) {
+        const ip = (body?.ip || '').trim();
+        if (!ip || !(0, node_net_1.isIP)(ip)) {
+            throw new common_1.BadRequestException('IP 格式不正确');
+        }
+        const defaultMs = Number(process.env.RATE_LIMIT_BLOCK_MS) || 24 * 60 * 60 * 1000;
+        const durationHours = Number(body?.durationHours);
+        const durationMs = durationHours > 0 ? durationHours * 60 * 60 * 1000 : defaultMs;
+        await this.ipBlockService.block(ip, durationMs, body?.reason?.trim() || '管理员手动加入黑名单');
+        return {
+            success: true,
+            message: `已将 ${ip} 加入黑名单`,
+            ip,
+            blockedUntil: new Date(Date.now() + durationMs),
+        };
     }
     async unblockIp(ip) {
         return this.ipBlockService.unblock(ip);
@@ -102,6 +119,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "listBlockedIps", null);
+__decorate([
+    (0, common_1.Post)('blocked-ips'),
+    (0, swagger_1.ApiOperation)({ summary: '手动将 IP 加入黑名单（仅管理员）' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'IP 已加入黑名单' }),
+    (0, common_1.UseGuards)(admin_auth_guard_1.AdminAuthGuard),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "blockIp", null);
 __decorate([
     (0, common_1.Delete)('blocked-ips/:ip'),
     (0, swagger_1.ApiOperation)({ summary: '解除指定 IP 的黑名单（仅管理员）' }),

@@ -11,6 +11,7 @@ import {
   NotFoundException,
   InternalServerErrorException, BadRequestException, Delete
 } from '@nestjs/common';
+import { isIP } from 'node:net';
 import { Request as ExpressRequest } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -58,6 +59,38 @@ export class ProjectsController {
   @UseGuards(AdminAuthGuard)
   async listBlockedIps() {
     return this.ipBlockService.list();
+  }
+
+  @Post('blocked-ips')
+  @ApiOperation({ summary: '手动将 IP 加入黑名单（仅管理员）' })
+  @ApiResponse({ status: 201, description: 'IP 已加入黑名单' })
+  @UseGuards(AdminAuthGuard)
+  async blockIp(
+    @Body()
+    body: { ip?: string; durationHours?: number; reason?: string },
+  ) {
+    const ip = (body?.ip || '').trim();
+    if (!ip || !isIP(ip)) {
+      throw new BadRequestException('IP 格式不正确');
+    }
+
+    const defaultMs = Number(process.env.RATE_LIMIT_BLOCK_MS) || 24 * 60 * 60 * 1000;
+    const durationHours = Number(body?.durationHours);
+    const durationMs =
+      durationHours > 0 ? durationHours * 60 * 60 * 1000 : defaultMs;
+
+    await this.ipBlockService.block(
+      ip,
+      durationMs,
+      body?.reason?.trim() || '管理员手动加入黑名单',
+    );
+
+    return {
+      success: true,
+      message: `已将 ${ip} 加入黑名单`,
+      ip,
+      blockedUntil: new Date(Date.now() + durationMs),
+    };
   }
 
   @Delete('blocked-ips/:ip')

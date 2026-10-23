@@ -10,6 +10,16 @@ export declare class ProjectsController {
     createOrUpdate(createProjectDto: CreateProjectDto, request: ExpressRequest): Promise<import("./entities/project.entity").Project>;
     findAll(adminPassword: string): Promise<import("./entities/project.entity").Project[]>;
     listBlockedIps(): Promise<import("../rate-limit/entities/blocked-ip.entity").BlockedIp[]>;
+    blockIp(body: {
+        ip?: string;
+        durationHours?: number;
+        reason?: string;
+    }): Promise<{
+        success: boolean;
+        message: string;
+        ip: string;
+        blockedUntil: Date;
+    }>;
     unblockIp(ip: string): Promise<{
         success: boolean;
         message: string;

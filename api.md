@@ -234,9 +234,29 @@
 - 携带正确管理员密码的请求不参与限流，避免管理员被误封
 - 可通过环境变量调整：`RATE_LIMIT_NORMAL_MAX`、`RATE_LIMIT_WINDOW_MS`、`RATE_LIMIT_BLACKLIST_MULTIPLIER`、`RATE_LIMIT_BLOCK_MS`
 
-黑名单管理接口（需要管理员密码）：
+黑名单管理接口（需要管理员密码，Header `admin-password` 或 Query `adminPassword`）：
 
 - **GET** `/projects/blocked-ips`：获取当前生效的黑名单
+- **POST** `/projects/blocked-ips`：手动将 IP 加入黑名单
+  ```json
+  {
+    "ip": "203.0.113.9",
+    "durationHours": 24,
+    "reason": "恶意请求"
+  }
+  ```
+  - `ip`：必填，IPv4 或 IPv6
+  - `durationHours`：可选，封禁时长（小时），默认取 `RATE_LIMIT_BLOCK_MS`（24 小时）
+  - `reason`：可选，加入黑名单的原因，默认“管理员手动加入黑名单”
+  - 响应：
+  ```json
+  {
+    "success": true,
+    "message": "已将 203.0.113.9 加入黑名单",
+    "ip": "203.0.113.9",
+    "blockedUntil": "2023-10-13T10:30:00.000Z"
+  }
+  ```
 - **DELETE** `/projects/blocked-ips/{ip}`：解除指定 IP 的黑名单
 
 ## 错误码说明
