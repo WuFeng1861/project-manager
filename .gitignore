@@ -5,3 +5,6 @@ node_modules
 # 部署脚本与运维笔记（含服务器地址、路径、指纹等，禁止入库）
 .deploy/
 .workbuddy/
+
+# 接口导出数据（含项目口令、服务器 IP 等，禁止入库）
+pm_out.json
