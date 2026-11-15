@@ -1,3 +1,7 @@
 node_modules
 .env
 *.sqlite
+
+# 部署脚本与运维笔记（含服务器地址、路径、指纹等，禁止入库）
+.deploy/
+.workbuddy/
