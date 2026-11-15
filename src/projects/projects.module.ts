@@ -5,7 +5,8 @@ import { HttpModule } from '@nestjs/axios';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
-import { RateLimitModule } from '../rate-limit/rate-limit.module';
+import { AdminModule } from '../admin/admin.module';
+import { IpBlockModule } from '../rate-limit/ip-block.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { RateLimitModule } from '../rate-limit/rate-limit.module';
       max: 1000,
     }),
     HttpModule,
-    RateLimitModule,
+    AdminModule,
+    IpBlockModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

@@ -14,15 +14,16 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const client_ip_util_1 = require("../common/utils/client-ip.util");
 const ip_block_service_1 = require("./ip-block.service");
+const admin_service_1 = require("../admin/admin.service");
 let IpRateLimitGuard = class IpRateLimitGuard {
-    constructor(ipBlockService, configService) {
+    constructor(ipBlockService, adminService, configService) {
         this.ipBlockService = ipBlockService;
+        this.adminService = adminService;
         this.windowMs = Number(configService.get('RATE_LIMIT_WINDOW_MS', 60_000));
         const normalMax = Number(configService.get('RATE_LIMIT_NORMAL_MAX', 30));
         const multiplier = Number(configService.get('RATE_LIMIT_BLACKLIST_MULTIPLIER', 10));
         this.hardLimit = normalMax * multiplier;
         this.blockMs = Number(configService.get('RATE_LIMIT_BLOCK_MS', 24 * 60 * 60 * 1000));
-        this.adminPassword = configService.get('SERVER_PASSWORD');
         const timer = setInterval(() => this.ipBlockService.pruneCounters(this.windowMs), 5 * 60 * 1000);
         timer.unref?.();
     }
@@ -31,13 +32,17 @@ let IpRateLimitGuard = class IpRateLimitGuard {
         if (request.method === 'OPTIONS' || request.path.startsWith('/api')) {
             return true;
         }
-        const adminPassword = request.headers['admin-password'] || request.query.adminPassword;
-        if (this.adminPassword && adminPassword === this.adminPassword) {
+        const token = admin_service_1.AdminService.extractToken(request);
+        if (token && (await this.adminService.validateSession(token))) {
             return true;
         }
-        const ip = client_ip_util_1.ClientIpUtil.getClientIp(request) || 'unknown';
-        if (this.ipBlockService.isBlocked(ip)) {
-            throw new common_1.ForbiddenException('该 IP 已被列入黑名单');
+        const ip = client_ip_util_1.ClientIpUtil.getTrustedClientIp(request) || 'unknown';
+        const isAdminPath = request.path === '/admin' || request.path.startsWith('/admin/');
+        if (!isAdminPath) {
+            const activeBlock = this.ipBlockService.getActiveBlock(ip);
+            if (activeBlock) {
+                throw new common_1.ForbiddenException(`该 IP 已被列入黑名单（原因：${activeBlock.reason || '未标注'}）`);
+            }
         }
         const count = this.ipBlockService.hit(ip, this.windowMs);
         if (count > this.hardLimit) {
@@ -51,6 +56,7 @@ exports.IpRateLimitGuard = IpRateLimitGuard;
 exports.IpRateLimitGuard = IpRateLimitGuard = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [ip_block_service_1.IpBlockService,
+        admin_service_1.AdminService,
         config_1.ConfigService])
 ], IpRateLimitGuard);
 //# sourceMappingURL=ip-rate-limit.guard.js.map

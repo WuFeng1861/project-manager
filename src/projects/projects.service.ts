@@ -53,12 +53,10 @@ export class ProjectsService {
 
     const savedProject = await this.projectRepository.save(project);
     
-    await this.cacheManager.set(
-      `project_${savedProject.serviceName}`,
-      savedProject,
-      60*60*1000,
-    );
-    
+    // 不再把完整实体（含 projectPassword）写进"非管理员"缓存；
+    // 直接失效相关缓存，下次读取时按身份重新裁剪。
+    await this.cacheManager.del(`project_${savedProject.serviceName}`);
+    await this.cacheManager.del(`project_${savedProject.serviceName}_admin`);
     await this.cacheManager.del('all_projects');
     await this.cacheManager.del('all_projects_admin');
     
@@ -75,15 +73,9 @@ export class ProjectsService {
     
     const projects = await this.projectRepository.find();
     
-    const processedProjects = projects.map(project => {
-      if (!isAdmin) {
-        return {
-          ...project,
-          serverIp: IpMasker.maskIp(project.serverIp),
-        };
-      }
-      return project;
-    });
+    const processedProjects = projects.map(project =>
+      isAdmin ? project : this.toPublicProject(project),
+    );
     
     await this.cacheManager.set(
       cacheKey,
@@ -112,10 +104,7 @@ export class ProjectsService {
     
     let processedProject = project;
     if (!isAdmin) {
-      processedProject = {
-        ...project,
-        serverIp: IpMasker.maskIp(project.serverIp),
-      };
+      processedProject = this.toPublicProject(project);
     }
     
     await this.cacheManager.set(
@@ -125,6 +114,22 @@ export class ProjectsService {
     );
     
     return processedProject;
+  }
+
+  /**
+   * 非管理员可见的项目视图：
+   * - 服务器 IP 脱敏；
+   * - 不下发 projectPassword（重启用的项目口令），避免口令随公开列表泄露。
+   */
+  private toPublicProject(project: Project): Project {
+    const { projectPassword, ...rest } = project as Project & {
+      projectPassword: string;
+    };
+
+    return {
+      ...(rest as Project),
+      serverIp: IpMasker.maskIp(project.serverIp),
+    };
   }
 
   async restartProject(serviceName: string): Promise<{ success: boolean; message: string }> {
@@ -145,11 +150,8 @@ export class ProjectsService {
       project.lastRestartTime = new Date();
       await this.projectRepository.save(project);
       
-      await this.cacheManager.set(
-        `project_${project.serviceName}`,
-        project,
-        60*60*1000,
-      );
+      await this.cacheManager.del(`project_${project.serviceName}`);
+      await this.cacheManager.del(`project_${project.serviceName}_admin`);
       await this.cacheManager.del('all_projects');
       await this.cacheManager.del('all_projects_admin');
       

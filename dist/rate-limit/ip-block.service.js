@@ -31,19 +31,25 @@ let IpBlockService = class IpBlockService {
             where: { blockedUntil: (0, typeorm_2.MoreThan)(new Date()) },
         });
         for (const blocked of activeBlocks) {
-            this.blockedCache.set(blocked.ip, new Date(blocked.blockedUntil).getTime());
+            this.blockedCache.set(blocked.ip, {
+                blockedUntil: new Date(blocked.blockedUntil).getTime(),
+                reason: blocked.reason || '',
+            });
         }
     }
     isBlocked(ip) {
-        const blockedUntil = this.blockedCache.get(ip);
-        if (!blockedUntil) {
-            return false;
+        return this.getActiveBlock(ip) !== null;
+    }
+    getActiveBlock(ip) {
+        const entry = this.blockedCache.get(ip);
+        if (!entry) {
+            return null;
         }
-        if (blockedUntil > Date.now()) {
-            return true;
+        if (entry.blockedUntil > Date.now()) {
+            return entry;
         }
         this.blockedCache.delete(ip);
-        return false;
+        return null;
     }
     hit(ip, windowMs) {
         const now = Date.now();
@@ -76,7 +82,10 @@ let IpBlockService = class IpBlockService {
         else {
             await this.blockedIpRepository.save(this.blockedIpRepository.create({ ip, blockedUntil, reason }));
         }
-        this.blockedCache.set(ip, blockedUntil.getTime());
+        this.blockedCache.set(ip, {
+            blockedUntil: blockedUntil.getTime(),
+            reason,
+        });
     }
     async unblock(ip) {
         await this.blockedIpRepository.delete({ ip });

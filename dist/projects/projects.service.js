@@ -49,7 +49,8 @@ let ProjectsService = class ProjectsService {
             project.sourceIps = Array.from(new Set([...(project.sourceIps || []), ...requestIps]));
         }
         const savedProject = await this.projectRepository.save(project);
-        await this.cacheManager.set(`project_${savedProject.serviceName}`, savedProject, 60 * 60 * 1000);
+        await this.cacheManager.del(`project_${savedProject.serviceName}`);
+        await this.cacheManager.del(`project_${savedProject.serviceName}_admin`);
         await this.cacheManager.del('all_projects');
         await this.cacheManager.del('all_projects_admin');
         return savedProject;
@@ -61,15 +62,7 @@ let ProjectsService = class ProjectsService {
             return cachedProjects;
         }
         const projects = await this.projectRepository.find();
-        const processedProjects = projects.map(project => {
-            if (!isAdmin) {
-                return {
-                    ...project,
-                    serverIp: ip_masker_util_1.IpMasker.maskIp(project.serverIp),
-                };
-            }
-            return project;
-        });
+        const processedProjects = projects.map(project => isAdmin ? project : this.toPublicProject(project));
         await this.cacheManager.set(cacheKey, processedProjects, 60 * 60 * 1000);
         return processedProjects;
     }
@@ -87,13 +80,17 @@ let ProjectsService = class ProjectsService {
         }
         let processedProject = project;
         if (!isAdmin) {
-            processedProject = {
-                ...project,
-                serverIp: ip_masker_util_1.IpMasker.maskIp(project.serverIp),
-            };
+            processedProject = this.toPublicProject(project);
         }
         await this.cacheManager.set(cacheKey, processedProject, 60 * 60 * 1000);
         return processedProject;
+    }
+    toPublicProject(project) {
+        const { projectPassword, ...rest } = project;
+        return {
+            ...rest,
+            serverIp: ip_masker_util_1.IpMasker.maskIp(project.serverIp),
+        };
     }
     async restartProject(serviceName) {
         const project = await this.projectRepository.findOne({
@@ -107,7 +104,8 @@ let ProjectsService = class ProjectsService {
             const response = await (0, rxjs_1.firstValueFrom)(this.httpService.post(url, { password: project.projectPassword }));
             project.lastRestartTime = new Date();
             await this.projectRepository.save(project);
-            await this.cacheManager.set(`project_${project.serviceName}`, project, 60 * 60 * 1000);
+            await this.cacheManager.del(`project_${project.serviceName}`);
+            await this.cacheManager.del(`project_${project.serviceName}_admin`);
             await this.cacheManager.del('all_projects');
             await this.cacheManager.del('all_projects_admin');
             return {

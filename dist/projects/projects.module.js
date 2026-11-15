@@ -14,7 +14,8 @@ const axios_1 = require("@nestjs/axios");
 const projects_controller_1 = require("./projects.controller");
 const projects_service_1 = require("./projects.service");
 const project_entity_1 = require("./entities/project.entity");
-const rate_limit_module_1 = require("../rate-limit/rate-limit.module");
+const admin_module_1 = require("../admin/admin.module");
+const ip_block_module_1 = require("../rate-limit/ip-block.module");
 let ProjectsModule = class ProjectsModule {
 };
 exports.ProjectsModule = ProjectsModule;
@@ -27,7 +28,8 @@ exports.ProjectsModule = ProjectsModule = __decorate([
                 max: 1000,
             }),
             axios_1.HttpModule,
-            rate_limit_module_1.RateLimitModule,
+            admin_module_1.AdminModule,
+            ip_block_module_1.IpBlockModule,
         ],
         controllers: [projects_controller_1.ProjectsController],
         providers: [projects_service_1.ProjectsService],

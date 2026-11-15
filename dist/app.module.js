@@ -13,6 +13,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const cache_manager_1 = require("@nestjs/cache-manager");
 const projects_module_1 = require("./projects/projects.module");
 const rate_limit_module_1 = require("./rate-limit/rate-limit.module");
+const admin_module_1 = require("./admin/admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -37,6 +38,7 @@ exports.AppModule = AppModule = __decorate([
                     synchronize: configService.get('DB_SYNCHRONIZE', true),
                 }),
             }),
+            admin_module_1.AdminModule,
             projects_module_1.ProjectsModule,
             rate_limit_module_1.RateLimitModule,
         ],

@@ -8,9 +8,14 @@ interface RequestCounter {
   count: number;
 }
 
+export interface BlockEntry {
+  blockedUntil: number;
+  reason: string;
+}
+
 @Injectable()
 export class IpBlockService implements OnModuleInit {
-  private readonly blockedCache = new Map<string, number>();
+  private readonly blockedCache = new Map<string, BlockEntry>();
   private readonly counters = new Map<string, RequestCounter>();
 
   constructor(
@@ -27,20 +32,28 @@ export class IpBlockService implements OnModuleInit {
       where: { blockedUntil: MoreThan(new Date()) },
     });
     for (const blocked of activeBlocks) {
-      this.blockedCache.set(blocked.ip, new Date(blocked.blockedUntil).getTime());
+      this.blockedCache.set(blocked.ip, {
+        blockedUntil: new Date(blocked.blockedUntil).getTime(),
+        reason: blocked.reason || '',
+      });
     }
   }
 
   isBlocked(ip: string): boolean {
-    const blockedUntil = this.blockedCache.get(ip);
-    if (!blockedUntil) {
-      return false;
+    return this.getActiveBlock(ip) !== null;
+  }
+
+  /** 返回该 IP 当前生效的黑名单信息（含原因），未命中返回 null */
+  getActiveBlock(ip: string): BlockEntry | null {
+    const entry = this.blockedCache.get(ip);
+    if (!entry) {
+      return null;
     }
-    if (blockedUntil > Date.now()) {
-      return true;
+    if (entry.blockedUntil > Date.now()) {
+      return entry;
     }
     this.blockedCache.delete(ip);
-    return false;
+    return null;
   }
 
   hit(ip: string, windowMs: number): number {
@@ -81,7 +94,10 @@ export class IpBlockService implements OnModuleInit {
       );
     }
 
-    this.blockedCache.set(ip, blockedUntil.getTime());
+    this.blockedCache.set(ip, {
+      blockedUntil: blockedUntil.getTime(),
+      reason,
+    });
   }
 
   async unblock(ip: string): Promise<{ success: boolean; message: string }> {

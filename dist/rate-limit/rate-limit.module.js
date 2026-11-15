@@ -9,24 +9,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RateLimitModule = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
-const typeorm_1 = require("@nestjs/typeorm");
-const blocked_ip_entity_1 = require("./entities/blocked-ip.entity");
-const ip_block_service_1 = require("./ip-block.service");
+const admin_module_1 = require("../admin/admin.module");
+const ip_block_module_1 = require("./ip-block.module");
 const ip_rate_limit_guard_1 = require("./ip-rate-limit.guard");
 let RateLimitModule = class RateLimitModule {
 };
 exports.RateLimitModule = RateLimitModule;
 exports.RateLimitModule = RateLimitModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([blocked_ip_entity_1.BlockedIp])],
+        imports: [ip_block_module_1.IpBlockModule, admin_module_1.AdminModule],
         providers: [
-            ip_block_service_1.IpBlockService,
             {
                 provide: core_1.APP_GUARD,
                 useClass: ip_rate_limit_guard_1.IpRateLimitGuard,
             },
         ],
-        exports: [ip_block_service_1.IpBlockService],
+        exports: [ip_block_module_1.IpBlockModule],
     })
 ], RateLimitModule);
 //# sourceMappingURL=rate-limit.module.js.map

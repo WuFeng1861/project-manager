@@ -11,6 +11,7 @@ export declare class ProjectsService {
     createOrUpdate(createProjectDto: CreateProjectDto, sourceIp?: string, requestIps?: string[]): Promise<Project>;
     findAll(isAdmin: boolean): Promise<Project[]>;
     findOne(serviceName: string, isAdmin: boolean): Promise<Project>;
+    private toPublicProject;
     restartProject(serviceName: string): Promise<{
         success: boolean;
         message: string;

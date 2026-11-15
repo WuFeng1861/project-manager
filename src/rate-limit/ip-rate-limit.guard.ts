@@ -10,16 +10,17 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { ClientIpUtil } from '../common/utils/client-ip.util';
 import { IpBlockService } from './ip-block.service';
+import { AdminService } from '../admin/admin.service';
 
 @Injectable()
 export class IpRateLimitGuard implements CanActivate {
   private readonly windowMs: number;
   private readonly hardLimit: number;
   private readonly blockMs: number;
-  private readonly adminPassword: string;
 
   constructor(
     private readonly ipBlockService: IpBlockService,
+    private readonly adminService: AdminService,
     configService: ConfigService,
   ) {
     this.windowMs = Number(configService.get('RATE_LIMIT_WINDOW_MS', 60_000));
@@ -31,7 +32,6 @@ export class IpRateLimitGuard implements CanActivate {
     this.blockMs = Number(
       configService.get('RATE_LIMIT_BLOCK_MS', 24 * 60 * 60 * 1000),
     );
-    this.adminPassword = configService.get('SERVER_PASSWORD');
 
     const timer = setInterval(
       () => this.ipBlockService.pruneCounters(this.windowMs),
@@ -47,17 +47,26 @@ export class IpRateLimitGuard implements CanActivate {
       return true;
     }
 
-    // 管理员请求不参与限流，避免管理员被自己的黑名单挡住
-    const adminPassword =
-      request.headers['admin-password'] || request.query.adminPassword;
-    if (this.adminPassword && adminPassword === this.adminPassword) {
+    // 携带有效管理员令牌的请求不参与限流与黑名单判定
+    const token = AdminService.extractToken(request);
+    if (token && (await this.adminService.validateSession(token))) {
       return true;
     }
 
-    const ip = ClientIpUtil.getClientIp(request) || 'unknown';
+    const ip = ClientIpUtil.getTrustedClientIp(request) || 'unknown';
 
-    if (this.ipBlockService.isBlocked(ip)) {
-      throw new ForbiddenException('该 IP 已被列入黑名单');
+    // 管理端接口不因黑名单被挡：否则管理员 IP 一旦被拉黑就再也进不了后台，
+    // 无法把自己加回白名单（这些接口本身仍有令牌 + 登录失败锁定保护）。
+    const isAdminPath =
+      request.path === '/admin' || request.path.startsWith('/admin/');
+
+    if (!isAdminPath) {
+      const activeBlock = this.ipBlockService.getActiveBlock(ip);
+      if (activeBlock) {
+        throw new ForbiddenException(
+          `该 IP 已被列入黑名单（原因：${activeBlock.reason || '未标注'}）`,
+        );
+      }
     }
 
     const count = this.ipBlockService.hit(ip, this.windowMs);

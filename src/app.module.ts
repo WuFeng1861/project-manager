@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ProjectsModule } from './projects/projects.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
         synchronize: configService.get<boolean>('DB_SYNCHRONIZE', true),
       }),
     }),
+    AdminModule,
     ProjectsModule,
     RateLimitModule,
   ],
